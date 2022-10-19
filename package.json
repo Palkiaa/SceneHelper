@@ -1,0 +1,12 @@
+{
+    "name": "com.palkiaa.scene-helper",
+    "version": "1.0.0",
+    "displayName": "Scene Helper",
+    "description": "Helps better navigate to open and load scenes in your project",
+    "unity": "2020.3",
+    "hideInEditor": true,
+    "author": {
+        "name": "Palkiaa",
+        "url": "https://github.com/Palkiaa"
+    }
+}
