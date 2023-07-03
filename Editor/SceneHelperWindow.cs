@@ -38,6 +38,7 @@ public partial class SceneHelperWindow : EditorWindow
         //https://docs.unity3d.com/ScriptReference/AssetPostprocessor.html
 
         EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+
         AssemblyReloadEvents.beforeAssemblyReload += OnBeforeAssemblyReload;
         AssemblyReloadEvents.afterAssemblyReload += OnAfterAssemblyReload;
 
@@ -45,11 +46,14 @@ public partial class SceneHelperWindow : EditorWindow
         //https://docs.unity3d.com/ScriptReference/SceneManagement.SceneManager.html
 
         EditorSceneManager.activeSceneChangedInEditMode += SceneManager_activeSceneChanged;
-        SceneManager.sceneUnloaded += EditorSceneManager_sceneUnloaded;
-        SceneManager.activeSceneChanged += SceneManager_activeSceneChanged;
-        SceneManager.sceneLoaded += SceneManager_sceneLoaded;
         EditorSceneManager.sceneOpened += EditorSceneManager_sceneOpened;
         EditorSceneManager.sceneClosed += EditorSceneManager_sceneClosed;
+
+        SceneManager.activeSceneChanged += SceneManager_activeSceneChanged;
+        SceneManager.sceneLoaded += SceneManager_sceneLoaded;
+        SceneManager.sceneUnloaded += EditorSceneManager_sceneUnloaded;
+
+        EditorBuildSettings.sceneListChanged += EditorBuildSettings_sceneListChanged;
 
         Refresh += SceneHelperWindow_Refresh;
         LoadScenes();
@@ -60,15 +64,19 @@ public partial class SceneHelperWindow : EditorWindow
         Refresh -= SceneHelperWindow_Refresh;
 
         EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
+
         AssemblyReloadEvents.beforeAssemblyReload -= OnBeforeAssemblyReload;
         AssemblyReloadEvents.afterAssemblyReload -= OnAfterAssemblyReload;
 
         EditorSceneManager.activeSceneChangedInEditMode -= SceneManager_activeSceneChanged;
-        SceneManager.sceneUnloaded -= EditorSceneManager_sceneUnloaded;
-        SceneManager.activeSceneChanged -= SceneManager_activeSceneChanged;
-        SceneManager.sceneLoaded -= SceneManager_sceneLoaded;
         EditorSceneManager.sceneOpened -= EditorSceneManager_sceneOpened;
         EditorSceneManager.sceneClosed -= EditorSceneManager_sceneClosed;
+
+        SceneManager.activeSceneChanged -= SceneManager_activeSceneChanged;
+        SceneManager.sceneLoaded -= SceneManager_sceneLoaded;
+        SceneManager.sceneUnloaded -= EditorSceneManager_sceneUnloaded;
+
+        EditorBuildSettings.sceneListChanged -= EditorBuildSettings_sceneListChanged;
     }
 
     private void SceneHelperWindow_Refresh()
@@ -89,54 +97,15 @@ public partial class SceneHelperWindow : EditorWindow
         }
     }
 
+    private void EditorBuildSettings_sceneListChanged()
+    {
+        RefreshScenes();
+    }
+
     private void LoadScenes()
     {
-        //Loading basic scene info
+        //Loading scene info and its state
         var scenes = GetScenes();
-
-        for (int i = 0; i < SceneManager.sceneCount; i++)
-        {
-            var scene = SceneManager.GetSceneAt(i);
-            var matchingScene = scenes.FirstOrDefault(s => s.Name == scene.name);
-            if (matchingScene != null)
-            {
-                if (scene.isLoaded)
-                {
-                    if (!scene.isSubScene)
-                    {
-                        matchingScene.OpenSceneMode = OpenSceneMode.Single;
-                    }
-                    else
-                    {
-                        matchingScene.OpenSceneMode = OpenSceneMode.Additive;
-                    }
-                }
-            }
-        }
-
-        foreach (var scene in scenes)
-        {
-            var match = Scenes.FirstOrDefault(s => s.AssetId == scene.AssetId);
-            if (match != null && match.OpenSceneMode.HasValue && !scene.OpenSceneMode.HasValue)
-            {
-                scene.OpenSceneMode = match.OpenSceneMode;
-            }
-        }
-
-        //var activeScene = SceneManager.GetActiveScene();
-        //var matchingScene = scenes.FirstOrDefault(s => activeScene.name == s.Name);
-        //if (matchingScene != null)
-        //{
-        //    matchingScene.OpenSceneMode = null;// = true;
-        //}
-
-        //foreach (var scene in Scenes)
-        //{
-        //    var sceneAsset = EditorSceneManager.GetSceneByPath(scene.AssetPath);//.isSubScene
-        //    Debug.Log($"{sceneAsset.name} - {sceneAsset.isLoaded} : {sceneAsset.isSubScene}");
-        //    //scene.OpenSceneMode =
-        //    //sceneAsset.isLoaded
-        //}
 
         //Setting up scene tree
         var pathSeperator = '/';
@@ -167,16 +136,8 @@ public partial class SceneHelperWindow : EditorWindow
         foreach (var sceneId in sceneIds)
         {
             var sceneAssetPath = AssetDatabase.GUIDToAssetPath(sceneId);
-            var sceneAsset = AssetDatabase.LoadAssetAtPath<SceneAsset>(sceneAssetPath);
 
-            //var sceneName = assetPath;
-            //var endOfPath = sceneName.LastIndexOf('/');
-            //if (0 <= endOfPath)
-            //    sceneName = sceneName.Substring(endOfPath + 1);
-            //
-            //var fileType = sceneName.LastIndexOf('.');
-            //if (0 <= fileType)
-            //    sceneName = sceneName.Substring(0, fileType);
+            var sceneAsset = AssetDatabase.LoadAssetAtPath<SceneAsset>(sceneAssetPath);
             var buildIndex = SceneUtility.GetBuildIndexByScenePath(sceneAssetPath);
 
             scenes.Add(new SceneMetaInfo
@@ -184,10 +145,24 @@ public partial class SceneHelperWindow : EditorWindow
                 AssetId = sceneId,
                 AssetPath = sceneAssetPath,
                 Name = sceneAsset.name,
-                BuildIndex = buildIndex != -1 ? buildIndex : (int?)null,
+                BuildIndex = buildIndex != -1 ? buildIndex : null,
                 IsDefaultPlayScene = EditorSceneManager.playModeStartScene == sceneAsset,
                 OpenSceneMode = null
             });
+        }
+
+        var activeScene = SceneManager.GetActiveScene();
+        for (int i = 0; i < SceneManager.sceneCount; i++)
+        {
+            var scene = SceneManager.GetSceneAt(i);
+            var sceneMetaInfo = scenes.SingleOrDefault(s => s == scene);
+            if (sceneMetaInfo == null)
+                continue;
+
+            if (scene.isLoaded)
+                sceneMetaInfo.OpenSceneMode = sceneMetaInfo == activeScene ? OpenSceneMode.Single : OpenSceneMode.Additive;
+            else
+                sceneMetaInfo.OpenSceneMode = OpenSceneMode.AdditiveWithoutLoading;
         }
 
         return scenes;
@@ -195,63 +170,51 @@ public partial class SceneHelperWindow : EditorWindow
 
     private void SceneManager_activeSceneChanged(Scene oldScene, Scene newScene)
     {
-        foreach (var scene in Scenes)
+        foreach (var sceneMetaInfo in Scenes)
         {
-            if (newScene.name == scene.Name)
-            {
-                scene.OpenSceneMode = OpenSceneMode.Single;
-            }
+            if (sceneMetaInfo == newScene)
+                sceneMetaInfo.OpenSceneMode = OpenSceneMode.Single;
             else
-            {
-                scene.OpenSceneMode = null;
-            }
+                sceneMetaInfo.OpenSceneMode = null;
         }
-        Repaint();
+
+        RefreshScenes();
     }
 
     private void SceneManager_sceneLoaded(Scene scene, LoadSceneMode loadSceneMode)
     {
-        foreach (var sceneMetaInfo in Scenes)
-        {
-            if (sceneMetaInfo.Name == scene.name)
-            {
-                if (loadSceneMode == LoadSceneMode.Single)
-                {
-                    sceneMetaInfo.OpenSceneMode = OpenSceneMode.Single;
-                }
-                else if (loadSceneMode == LoadSceneMode.Additive)
-                {
-                    sceneMetaInfo.OpenSceneMode = OpenSceneMode.Additive;
-                }
-            }
-        }
-        Repaint();
+        var sceneMetaInfo = Scenes.SingleOrDefault(s => s == scene);
+        if (sceneMetaInfo == null)
+            return;
+
+        if (loadSceneMode == LoadSceneMode.Single)
+            sceneMetaInfo.OpenSceneMode = OpenSceneMode.Single;
+        else if (loadSceneMode == LoadSceneMode.Additive)
+            sceneMetaInfo.OpenSceneMode = OpenSceneMode.Additive;
+
+        RefreshScenes();
     }
 
     private void EditorSceneManager_sceneOpened(Scene scene, OpenSceneMode mode)
     {
-        foreach (var sceneMetaInfo in Scenes)
-        {
-            if (sceneMetaInfo.Name == scene.name)
-            {
-                sceneMetaInfo.OpenSceneMode = mode;
-            }
-        }
-        Repaint();
+        var sceneMetaInfo = Scenes.SingleOrDefault(s => s == scene);
+        if (sceneMetaInfo == null)
+            return;
+
+        sceneMetaInfo.OpenSceneMode = mode;
+
+        RefreshScenes();
     }
-
-
 
     private void EditorSceneManager_sceneClosed(Scene scene)
     {
-        foreach (var sceneMetaInfo in Scenes)
-        {
-            if (sceneMetaInfo.Name == scene.name)
-            {
-                sceneMetaInfo.OpenSceneMode = null;
-            }
-        }
-        Repaint();
+        var sceneMetaInfo = Scenes.SingleOrDefault(s => s == scene);
+        if (sceneMetaInfo == null)
+            return;
+
+        sceneMetaInfo.OpenSceneMode = null;
+
+        RefreshScenes();
     }
 
     /// <summary>
@@ -263,16 +226,18 @@ public partial class SceneHelperWindow : EditorWindow
     }
 
     /// <summary>
-    /// Restore window state after assembly reload.
-    /// </summary>
-    private void OnAfterAssemblyReload()
-    {
-    }
-
-    /// <summary>
     /// Save state before domain reload.
     /// </summary>
     private void OnBeforeAssemblyReload()
     {
+    }
+
+    /// <summary>
+    /// Restore window state after assembly reload.
+    /// </summary>
+    private void OnAfterAssemblyReload()
+    {
+        OnEnableGUI();
+        RefreshScenes();
     }
 }
