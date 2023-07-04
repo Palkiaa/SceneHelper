@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace GitCollab.Helpers.ChangeTree
+namespace Helpers.ChangeTree
 {
     public class TreeCreator<Type>
     {

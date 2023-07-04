@@ -1,12 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
-using GitCollab.Helpers.ChangeTree;
-
+using Helpers.ChangeTree;
 using UnityEditor;
+using UnityEditor.PackageManager;
 using UnityEditor.SceneManagement;
-
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -105,7 +103,23 @@ public partial class SceneHelperWindow : EditorWindow
     private void LoadScenes()
     {
         //Loading scene info and its state
-        var scenes = GetScenes();
+        var scenes = GetScenes().ToList();
+
+        //Filter out scenes that can't be opened
+        for (int i = 0; i < scenes.Count; i++)
+        {
+            var scene = scenes[i];
+
+            var info = UnityEditor.PackageManager.PackageInfo.FindForAssetPath(scene.AssetPath);
+            if (info == null) //Doesn't exist inside a package, belongs to the project
+                continue;
+
+            if (info.source is not (PackageSource.Embedded or PackageSource.Local))
+            {
+                scenes.RemoveAt(i);
+                i--;
+            }
+        }
 
         //Setting up scene tree
         var pathSeperator = '/';

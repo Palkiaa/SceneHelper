@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace GitCollab.Helpers.ChangeTree
+namespace Helpers.ChangeTree
 {
     public class TreeItem<Type>
     {

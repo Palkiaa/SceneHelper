@@ -1,23 +1,22 @@
 using System.Linq;
-
 using UnityEditor;
 
 //https://docs.unity3d.com/ScriptReference/AssetModificationProcessor.html
 public class SceneAssetProcessor : AssetModificationProcessor
 {
-    private const string sceneFilter = ".unity";
+    private const string _sceneFilter = ".unity";
 
-    private static void OnWillCreateAsset(string assetName)
+    protected static void OnWillCreateAsset(string assetName)
     {
-        if (assetName.Contains(sceneFilter))
+        if (assetName.Contains(_sceneFilter))
         {
             SceneHelperWindow.RefreshScenes();
         }
     }
 
-    private static AssetDeleteResult OnWillDeleteAsset(string sourcePath, RemoveAssetOptions removeAssetOptions)
+    protected static AssetDeleteResult OnWillDeleteAsset(string sourcePath, RemoveAssetOptions removeAssetOptions)
     {
-        if (sourcePath.EndsWith(sceneFilter))
+        if (sourcePath.EndsWith(_sceneFilter))
         {
             SceneHelperWindow.RefreshScenes();
         }
@@ -25,9 +24,9 @@ public class SceneAssetProcessor : AssetModificationProcessor
         return AssetDeleteResult.DidNotDelete;
     }
 
-    private static AssetMoveResult OnWillMoveAsset(string sourcePath, string destinationPath)
+    protected static AssetMoveResult OnWillMoveAsset(string sourcePath, string destinationPath)
     {
-        if (sourcePath.EndsWith(sceneFilter))
+        if (sourcePath.EndsWith(_sceneFilter))
         {
             SceneHelperWindow.RefreshScenes();
         }
@@ -35,9 +34,9 @@ public class SceneAssetProcessor : AssetModificationProcessor
         return AssetMoveResult.DidNotMove;
     }
 
-    private static string[] OnWillSaveAssets(string[] paths)
+    protected static string[] OnWillSaveAssets(string[] paths)
     {
-        if (paths.Any(s => s.EndsWith(sceneFilter)))
+        if (paths.Any(s => s.EndsWith(_sceneFilter)))
         {
             SceneHelperWindow.RefreshScenes();
         }

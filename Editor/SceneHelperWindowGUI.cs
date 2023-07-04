@@ -1,46 +1,35 @@
 ﻿using System.Linq;
-
-using GitCollab.Helpers.ChangeTree;
-
+using Helpers.ChangeTree;
 using UnityEditor;
 using UnityEditor.SceneManagement;
-
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public partial class SceneHelperWindow
 {
-    public CustomGUI CustomGUI = new();
+    private CustomGUI _customGUI = new();
 
-    private Vector2 scrollView;
-    private const char seperator = '/';
+    private Vector2 _scrollView;
+    private const char _seperator = '/';
 
     private void OnEnableGUI()
     {
-        //CustomGUI = new CustomGUI();
-        CustomGUI.OnEnableGUI();
-
-        //GoToFileIcon = EditorGUIUtility.IconContent("pick_uielements");
+        _customGUI.Initialise();
     }
 
     private void OnGUI()
     {
+        _customGUI.RefreshStyles();
+
         if (IsDirty)
         {
             LoadScenes();
             IsDirty = false;
         }
 
-        //foreach (var scene in Scenes)
-        //{
-        //    EditorGUILayout.LabelField(scene.Name, scene.AssetId);
-        //}
+        EditorGUI.DrawRect(new Rect(Vector2.zero, position.size), _customGUI.MainBackgroundColor);
 
-        //GUILayout.Space(15);
-
-        EditorGUILayout.BeginVertical(GUI.skin.box);
-
-        scrollView = EditorGUILayout.BeginScrollView(scrollView, GUILayout.Height(position.height));// - (130f)));
+        _scrollView = EditorGUILayout.BeginScrollView(_scrollView, GUILayout.Height(position.height));// - (130f)));
 
         foreach (var item in SceneTree)
         {
@@ -48,7 +37,6 @@ public partial class SceneHelperWindow
         }
 
         EditorGUILayout.EndScrollView();
-        EditorGUILayout.EndVertical();
     }
 
     private string BuildTitle(string text, string prefix = null)
@@ -105,17 +93,9 @@ public partial class SceneHelperWindow
 
             var obj = AssetDatabase.LoadAssetAtPath(pathToFolder, typeof(Object));
             if (obj != null)
-            {
-                EditorUtility.FocusProjectWindow();
-                // Select the object in the project folder
-                Selection.activeObject = obj;
-                // Also flash the folder yellow to highlight it
-                EditorGUIUtility.PingObject(obj);
-            }
+                FocusProjectAsset(obj);
             else
-            {
                 Debug.LogWarning($"Folder not found: '{pathToFolder}'", this);
-            }
         }
 
         EditorGUI.indentLevel++;
@@ -168,22 +148,22 @@ public partial class SceneHelperWindow
                 switch (scene.OpenSceneMode)
                 {
                     case OpenSceneMode.Single:
-                        GUI.Label(iconRect, CustomGUI.ActiveIcon);
-                        style.SetupColors(CustomGUI.Scene_OpenedColor);
+                        GUI.Label(iconRect, _customGUI.ActiveIcon);
+                        style.SetupColors(_customGUI.Scene_OpenedColor);
 
                         style.fontStyle = FontStyle.Bold;
                         break;
 
                     case OpenSceneMode.Additive:
-                        GUI.Label(iconRect, CustomGUI.PassiveIcon);
-                        style.SetupColors(CustomGUI.Scene_AdditiveColor);
+                        GUI.Label(iconRect, _customGUI.PassiveIcon);
+                        style.SetupColors(_customGUI.Scene_AdditiveColor);
 
                         style.fontStyle = FontStyle.Bold;
                         break;
 
                     case OpenSceneMode.AdditiveWithoutLoading:
-                        GUI.Label(iconRect, CustomGUI.InactiveIcon);
-                        style.SetupColors(CustomGUI.Scene_AdditiveNotLoadedColor);
+                        GUI.Label(iconRect, _customGUI.Scene_InactiveContent);
+                        style.SetupColors(_customGUI.Scene_AdditiveNotLoadedColor);
 
                         style.fontStyle = FontStyle.Italic;
                         break;
@@ -229,7 +209,7 @@ public partial class SceneHelperWindow
             }*/
 
             var addSceneRect = rect;
-            addSceneRect.width = addSceneRect.height * 1.2f;
+            addSceneRect.width = addSceneRect.height * 1f;
             addSceneRect.x = rect.x + rect.width - (addSceneRect.width);
 
             var loadSceneRect = addSceneRect;
@@ -239,10 +219,10 @@ public partial class SceneHelperWindow
             //setDefaultButton.width = setDefaultButton.height * 1.2f;
             setDefaultButton.x -= setDefaultButton.width;
 
-            if (GUI.Button(setDefaultButton, CustomGUI.GoToFileIcon))
+            if (GUI.Button(setDefaultButton, _customGUI.TargetIcon, _customGUI.ImageButton))
             {
                 var sceneObject = AssetDatabase.LoadAssetAtPath<SceneAsset>(scene.AssetPath);
-                EditorGUIUtility.PingObject(sceneObject);
+                FocusProjectAsset(sceneObject);
             }
 
             if (scene.OpenSceneMode.HasValue)
@@ -251,42 +231,40 @@ public partial class SceneHelperWindow
                 {
                     var originalVal = GUI.enabled;
                     GUI.enabled = false;
-                    GUI.Button(addSceneRect, CustomGUI.SceneLoadedButtonActiveContent);
+                    GUI.Button(addSceneRect, _customGUI.Scene_ActiveContent, _customGUI.ImageButton);
                     GUI.enabled = originalVal;
                 }
-                else if (GUI.Button(addSceneRect, CustomGUI.SceneLoadedButtonRemoveContent))
+                else if (GUI.Button(addSceneRect, _customGUI.Scene_UnloadContent, _customGUI.ImageButton))
                 {
                     EditorSceneManager.CloseScene(SceneManager.GetSceneByPath(scene.AssetPath), true);
                 }
             }
-            else
+            else if (GUI.Button(addSceneRect, _customGUI.Scene_LoadAdditivelyContent, _customGUI.ImageButton))
             {
-                if (GUI.Button(addSceneRect, CustomGUI.SceneLoadedButtonAddContent))
-                {
-                    EditorSceneManager.OpenScene(scene.AssetPath, OpenSceneMode.Additive);
-                }
+                EditorSceneManager.OpenScene(scene.AssetPath, OpenSceneMode.Additive);
             }
 
-            var defaultSceneGuiStyle = new GUIStyle(GUI.skin.button);
-
-            //https://forum.unity.com/threads/check-if-asset-inside-package-is-readonly.900902/
             if (scene.IsDefaultPlayScene)
             {
-                defaultSceneGuiStyle.normal.textColor = Color.green;
-                if (GUI.Button(loadSceneRect, CustomGUI.SceneUnsetDefaultButtonAddContent, defaultSceneGuiStyle))
+                using (_ = new GUIColor(_customGUI.Active))
                 {
-                    EditorSceneManager.playModeStartScene = null;
-                    RefreshScenes();
+                    if (GUI.Button(loadSceneRect, _customGUI.Scene_UnsetDefaultContent, _customGUI.ImageButton))
+                    {
+                        EditorSceneManager.playModeStartScene = null;
+                        RefreshScenes();
+                    }
                 }
             }
             else
             {
-                defaultSceneGuiStyle.normal.textColor = Color.gray;
-                if (GUI.Button(loadSceneRect, CustomGUI.SceneDefaultButtonAddContent, defaultSceneGuiStyle))
+                using (_ = new GUIColor(_customGUI.Inactive))
                 {
-                    SceneAsset myWantedStartScene = AssetDatabase.LoadAssetAtPath<SceneAsset>(scene.AssetPath);
-                    EditorSceneManager.playModeStartScene = myWantedStartScene;
-                    RefreshScenes();
+                    if (GUI.Button(loadSceneRect, _customGUI.Scene_SetDefaultContent, _customGUI.ImageButton))
+                    {
+                        SceneAsset myWantedStartScene = AssetDatabase.LoadAssetAtPath<SceneAsset>(scene.AssetPath);
+                        EditorSceneManager.playModeStartScene = myWantedStartScene;
+                        RefreshScenes();
+                    }
                 }
             }
 
@@ -313,5 +291,14 @@ public partial class SceneHelperWindow
             RenderLeaf(child, null, subParents);
         }
         EditorGUI.indentLevel--;
+    }
+
+    private void FocusProjectAsset(Object @object)
+    {
+        EditorUtility.FocusProjectWindow();
+        // Select the object in the project folder
+        Selection.activeObject = @object;
+        // Also flash the folder yellow to highlight it
+        EditorGUIUtility.PingObject(@object);
     }
 }
