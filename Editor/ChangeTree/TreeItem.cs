@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Helpers.ChangeTree
+namespace SceneHelper.Editor.ChangeTree
 {
     public class TreeItem<Type>
     {

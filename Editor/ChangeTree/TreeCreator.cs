@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Helpers.ChangeTree
+namespace SceneHelper.Editor.ChangeTree
 {
     public class TreeCreator<Type>
     {

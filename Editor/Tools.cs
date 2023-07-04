@@ -1,5 +1,4 @@
 ﻿using UnityEditor;
-using UnityEngine;
 
 namespace SceneHelper.Editor
 {
@@ -12,6 +11,7 @@ namespace SceneHelper.Editor
         }
 
 #if SceneHelper_Dev
+
         [MenuItem("Tools/Force close Scene Helper", priority = -2000)]
         internal static void CloseSceneHelper()
         {
@@ -20,6 +20,7 @@ namespace SceneHelper.Editor
             if (window != null)
                 window.Close();
         }
+
 #endif
     }
 }
