@@ -14,9 +14,24 @@ namespace SceneHelper.Editor
     {
         public static void Init()
         {
-            var w = CreateWindow<SceneHelperWindow>("Scene Helper");
-            w.ShowUtility();
+            var types = new Type[]
+            {
+                // first add your preferences
+                typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.InspectorWindow"),
+                typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.SceneHierarchyWindow"),
+                typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.ConsoleWindow"),
+                typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.ProjectBrowser"),
+                typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.GameView"),
+                typeof(SceneView),
+            };
+
+            var w = CreateWindow<SceneHelperWindow>(types);
+
+            var image = EditorGUIUtility.IconContent("d_UnityEditor.HierarchyWindow").image;
+            w.titleContent = new GUIContent(PackageInfo.DisplayName, image);
             w.minSize = new Vector2(320, 450);
+
+            w.ShowUtility();
         }
 
         public static void RefreshScenes()

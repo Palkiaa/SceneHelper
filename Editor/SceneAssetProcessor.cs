@@ -1,3 +1,4 @@
+using System.IO;
 using System.Linq;
 using UnityEditor;
 
@@ -27,7 +28,19 @@ namespace SceneHelper.Editor
 
         protected static AssetMoveResult OnWillMoveAsset(string sourcePath, string destinationPath)
         {
-            if (sourcePath.EndsWith(_sceneFilter))
+            var extension = Path.GetExtension(sourcePath);
+            if (!string.IsNullOrWhiteSpace(extension))
+            {
+                if (sourcePath.EndsWith(_sceneFilter))
+                {
+                    SceneHelperWindow.RefreshScenes();
+                }
+
+                return AssetMoveResult.DidNotMove;
+            }
+
+            var assets = AssetDatabase.FindAssets("t:scene", new string[] { sourcePath });
+            if (assets.Any())
             {
                 SceneHelperWindow.RefreshScenes();
             }

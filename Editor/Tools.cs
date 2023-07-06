@@ -4,7 +4,7 @@ namespace SceneHelper.Editor
 {
     public static class Tools
     {
-        [MenuItem("Tools/Scene Helper", priority = -2000)]
+        [MenuItem("Tools/" + PackageInfo.DisplayName, priority = -2000)]
         internal static void OpenSceneHelper()
         {
             SceneHelperWindow.Init();
@@ -12,7 +12,7 @@ namespace SceneHelper.Editor
 
 #if SceneHelper_Dev
 
-        [MenuItem("Tools/Force close Scene Helper", priority = -2000)]
+        [MenuItem("Tools/Force close " + PackageInfo.DisplayName, priority = -2000)]
         internal static void CloseSceneHelper()
         {
             var window = EditorWindow.GetWindow<SceneHelperWindow>();
