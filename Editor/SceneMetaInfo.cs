@@ -43,6 +43,10 @@ namespace SceneHelper.Editor
             return sceneMeta.AssetPath != scene.path;
         }
 
+        public static bool operator ==(Scene scene, SceneMetaInfo sceneMeta) => sceneMeta == scene;
+
+        public static bool operator !=(Scene scene, SceneMetaInfo sceneMeta) => sceneMeta != scene;
+
         public override bool Equals(object obj)
         {
             return base.Equals(obj);

@@ -80,7 +80,6 @@ namespace SceneHelper.Editor
 
             EditorGUILayout.BeginHorizontal(GUI.skin.box);
 
-            //GUILayout.Label(BuildTitle(treeItem.Summary, prefix), EditorStyles.boldLabel);
             var title = BuildTitle(treeItem.Summary, prefix);
             EditorGUILayout.LabelField(title, EditorStyles.boldLabel);
 
@@ -103,25 +102,41 @@ namespace SceneHelper.Editor
             EditorGUI.indentLevel++;
             foreach (var scene in treeItem.Data)
             {
-                var rect = GUILayoutUtility.GetRect(position.width - 20f, EditorGUIUtility.singleLineHeight, GUIStyle.none);
+                var mainRect = GUILayoutUtility.GetRect(position.width - 20f, EditorGUIUtility.singleLineHeight, GUIStyle.none);
 
                 var offset = EditorGUI.indentLevel * 10f;
-                rect.x += offset;
-                rect.width -= offset;
+                mainRect.x += offset;
+                mainRect.width -= offset;
 
-                var iconRect = rect;
-                iconRect.width = iconRect.height;
+                var sceneStateRect = mainRect;
+                sceneStateRect.width = sceneStateRect.height;
 
-                var sceneButtonRect = rect;
+                var sceneButtonRect = mainRect;
                 sceneButtonRect.width *= 0.8f;
-                //DrawUIBox(Color.white, Color.grey, labelRect, 1);
+                sceneButtonRect.x += sceneStateRect.width;
+                sceneButtonRect.width -= sceneStateRect.width;
 
-                sceneButtonRect.x += iconRect.width;
-                sceneButtonRect.width -= iconRect.width;
-
-                var sceneIndexRect = rect;
-                sceneIndexRect.width = rect.height;
+                var sceneIndexRect = mainRect;
+                sceneIndexRect.width = mainRect.height;
                 sceneIndexRect.x = sceneButtonRect.x + sceneButtonRect.width;
+
+                var addSceneRect = mainRect;
+                addSceneRect.width = addSceneRect.height * 1f;
+                addSceneRect.x = mainRect.x + (mainRect.width - addSceneRect.width);
+
+                var loadSceneRect = addSceneRect;
+                loadSceneRect.x -= addSceneRect.width;
+
+                var pingSceneRect = loadSceneRect;
+                pingSceneRect.x -= pingSceneRect.width;
+
+                var overlap = (sceneButtonRect.x + sceneButtonRect.width + sceneIndexRect.width) - pingSceneRect.x;
+                if (0 < overlap)
+                {
+                    sceneButtonRect.width -= overlap;
+                    sceneIndexRect.x -= overlap;
+                }
+
                 if (scene.BuildIndex.HasValue)
                 {
                     GUI.Label(sceneIndexRect, $"{scene.BuildIndex.Value}");
@@ -140,31 +155,27 @@ namespace SceneHelper.Editor
                     }
                 }
 
-                //var buttonSkin = GUI.skin.button;
                 var style = new GUIStyle(GUI.skin.button);
-                //style.border = buttonSkin.border;
-                //style.margin = buttonSkin.margin;
-                //style.padding = buttonSkin.padding;
                 if (scene.IsLoaded)
                 {
                     switch (scene.OpenSceneMode)
                     {
                         case OpenSceneMode.Single:
-                            GUI.Label(iconRect, _customGUI.ActiveIcon);
+                            GUI.Label(sceneStateRect, _customGUI.ActiveIcon);
                             style.SetupColors(_customGUI.Scene_OpenedColor);
 
                             style.fontStyle = FontStyle.Bold;
                             break;
 
                         case OpenSceneMode.Additive:
-                            GUI.Label(iconRect, _customGUI.PassiveIcon);
+                            GUI.Label(sceneStateRect, _customGUI.PassiveIcon);
                             style.SetupColors(_customGUI.Scene_AdditiveColor);
 
                             style.fontStyle = FontStyle.Bold;
                             break;
 
                         case OpenSceneMode.AdditiveWithoutLoading:
-                            GUI.Label(iconRect, _customGUI.Scene_InactiveContent);
+                            GUI.Label(sceneStateRect, _customGUI.Scene_InactiveContent);
                             style.SetupColors(_customGUI.Scene_AdditiveNotLoadedColor);
 
                             style.fontStyle = FontStyle.Italic;
@@ -193,35 +204,7 @@ namespace SceneHelper.Editor
                     }
                 }
 
-                /*if (GUI.Button(loadSceneRect, ScenePlayButtonContent))
-                {
-                    //https://docs.unity3d.com/ScriptReference/EditorApplication.html
-                    SceneAsset myWantedStartScene = AssetDatabase.LoadAssetAtPath<SceneAsset>(scene.AssetPath);
-                    if (!EditorApplication.isPlaying && EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
-                    {
-                        EditorSceneManager.playModeStartScene = myWantedStartScene;
-                        EditorApplication.EnterPlaymode();
-                    }
-                    else
-                    {
-                        SceneManager.LoadScene(myWantedStartScene.name, LoadSceneMode.Single);
-                    }
-
-                    //EditorSceneManager.playModeStartScene = null;
-                }*/
-
-                var addSceneRect = rect;
-                addSceneRect.width = addSceneRect.height * 1f;
-                addSceneRect.x = rect.x + rect.width - (addSceneRect.width);
-
-                var loadSceneRect = addSceneRect;
-                loadSceneRect.x -= addSceneRect.width;
-
-                var setDefaultButton = loadSceneRect;
-                //setDefaultButton.width = setDefaultButton.height * 1.2f;
-                setDefaultButton.x -= setDefaultButton.width;
-
-                if (GUI.Button(setDefaultButton, _customGUI.TargetIcon, _customGUI.ImageButton))
+                if (GUI.Button(pingSceneRect, _customGUI.TargetIcon, _customGUI.ImageButton))
                 {
                     var sceneObject = AssetDatabase.LoadAssetAtPath<SceneAsset>(scene.AssetPath);
                     FocusProjectAsset(sceneObject);
@@ -270,14 +253,13 @@ namespace SceneHelper.Editor
                     }
                 }
 
-                var seperatorRect = GUILayoutUtility.GetRect(rect.width, 5f, GUIStyle.none);
-                seperatorRect.x = rect.x;
+                var seperatorRect = GUILayoutUtility.GetRect(mainRect.width, 5f, GUIStyle.none);
+                seperatorRect.x = mainRect.x;
                 seperatorRect.y += 2;
                 seperatorRect.height = 1;
                 EditorGUI.DrawRect(seperatorRect, new Color(1, 1, 1, 0.1f));
 
                 GUI.enabled = true;
-                //EditorGUILayout.LabelField(string.Empty, GUI.skin.horiz`ontalSlider);
             }
             EditorGUI.indentLevel--;
 
@@ -298,9 +280,7 @@ namespace SceneHelper.Editor
         private void FocusProjectAsset(Object @object)
         {
             EditorUtility.FocusProjectWindow();
-            // Select the object in the project folder
             Selection.activeObject = @object;
-            // Also flash the folder yellow to highlight it
             EditorGUIUtility.PingObject(@object);
         }
     }
